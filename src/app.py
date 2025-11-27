@@ -3,25 +3,20 @@ from flask import Flask, jsonify, request
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager, jwt_required, get_jwt_identity
 from dotenv import load_dotenv
-load_dotenv()
-
 from routes.Bp_modify import Bp_modify
 from routes.sign_up import sign_up
 from routes.delete_user import delete_user
 from routes.get_users import get_users
 from routes.login import login
-from routes.payment_routes import plans_bp, create_payment_bp, user_payments_bp, exchange_bp, methods_bp
+from routes.payment_routes import plans_bp, create_payment_bp, user_payments_bp, exchange_bp, methods_bp, historial_bp
 from keys import supabase
-from dotenv import load_dotenv
 import os
 from routes.logout import logout_bp
-
-
 from keys import supabase
-
 from flask_jwt_extended import JWTManager, jwt_required, get_jwt_identity
 from datetime import timedelta 
 
+load_dotenv()
 
 
 
@@ -45,8 +40,9 @@ app.register_blueprint(login, url_prefix='/login')
 app.register_blueprint(plans_bp, url_prefix='/api/plans') 
 app.register_blueprint(create_payment_bp, url_prefix='/api/payments')
 app.register_blueprint(user_payments_bp, url_prefix='/api/my-payments')
-app.register_blueprint(exchange_bp, url_prefix='/api/exchange')
 app.register_blueprint(methods_bp, url_prefix='/api/methods')
+
+app.register_blueprint(historial_bp, url_prefix='/historial')
 
 app.register_blueprint(logout_bp, url_prefix='/logout')
 
