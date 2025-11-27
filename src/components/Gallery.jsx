@@ -1,38 +1,57 @@
 import '../styles/Gallery.css'
 import { useEffect, useState } from 'react';
 
-export default function Gallery() {
-
-    const imagesPreview = [
-        "galeriaImagen1.jpg",
-        "galeriaImagen2.jpg",
-        "galeriaImagen3.jpg",
-    ];
+export default function Gallery({ isAdmin = false }) {
 
     const [images, setImages] = useState([])
     const [zoomSrc, setZoomSrc] = useState(null);
 
     useEffect(() => {
-    fetch('/api/gallery')
-      .then(res => {
-        if (!res.ok) throw new Error('Fetch failed')
-        return res.json()
-      })
-      .then(data => {
-          if (cancelled) return
-          // normaliza los campos que venga del backend (ruta_imagen o url)
-          const normalized = data.map((d, i) => ({
-            id: d.id ?? `api-${i}`,
-            url: d.ruta_imagen ?? d.url ?? '',
-            alt: d.titulo ?? d.alt ?? ''
-          })).filter(x => x.url) // descarta entradas sin url
-          setImages(normalized)
-        })
-      .catch(err => {
-        console.error(err)
+
+  const controller = new AbortController()
+
+  const load = async () => {
+    try {
+      const res = await fetch('/api/gallery', { signal: controller.signal }) // ojo con la barra final
+
+      if (!res.ok) {
+        //console.error('Gallery load failed status', res.status)
         setImages([])
-      })
-  }, [])
+        return
+      }
+
+      const contentType = res.headers.get('content-type') || ''
+      if (!contentType.includes('application/json')) {
+        //console.error('Gallery: expected JSON but got', contentType)
+        const text = await res.text()   // lee el cuerpo aunque sea HTML
+        //console.log("Respuesta no JSON:", text)
+        setImages([])
+        return
+      }
+
+      const data = await res.json()
+      //console.log("Respuesta JSON cruda:", data)   // 👈 aquí ves lo que llega
+
+      const normalized = (Array.isArray(data) ? data : []).map((d, i) => ({
+        id: d.id ?? `api-${i}`,
+        url: d.ruta_imagen ?? '',
+        alt: d.titulo ?? `Imagen ${i}`
+      })).filter(x => x.url)
+
+      //console.log("Imágenes normalizadas:", normalized) // 👈 ves cómo quedaron
+      setImages(normalized)
+    } catch (err) {
+      if (err.name !== 'AbortError') {
+        //console.error('Gallery fetch error:', err)
+        setImages([])
+      }
+    }
+  }
+
+  load()
+  return () => controller.abort()
+}, [])
+
 
     const toggleZoom = (src) => {
         setZoomSrc(prev => (prev === src ? null : src));
@@ -46,28 +65,41 @@ export default function Gallery() {
                     <div className="gallery-header">
                         <h2>Gallery</h2>
                     </div>
-                    <div className="gallery-images">
-                         {imagesPreview.map((name, i) => (
+                    
+                      {!isAdmin ? (
+                        <>
+                        <div className="gallery-images">
+                          {images.map((img) => (
+                            <button className='edit-image' key={img.id}>
                             <img
-                            key={i}
-                            src={`/galleryImages/${name}`} // ruta relativa a public/
-                            alt={`Imagen ${i}`}
-                            className='gallery-image'
-                            onClick={() => toggleZoom(src)}
+                              key={img.id}
+                              src={img.url} // ruta relativa a public/
+                              alt={img.alt || ''}
+                              className='gallery-image'
+                              onClick={() => toggleZoom(src)}
+                            />
+                            </button>
+                          ))}
+                            <button className='add-image'><i>+</i>Añadir imagen</button>
+                        </div>
+                        <div className='gallery-submit'>
+                          <button className='submit'>Confirmar</button> 
+                        </div>
+                        </>
+                    ) : (
+                      <div className="gallery-images">
+                        {images.map((img) => (
+                            <img
+                              key={img.id}
+                              src={img.url} // ruta relativa a public/
+                              alt={img.alt || ''}
+                              className='gallery-image'
+                              onClick={() => toggleZoom(src)}
                             />
                         ))}
-
-                        { /* images.map((img) => (
-                            <img
-                                key={img.id}
-                                src={img.url}
-                                alt={img.alt || ''}
-                                className="gallery-thumb"
-                                onClick={() => toggleZoom(img.url)}
-                            />
-                        )) */}
-                        <img src="https://images.unsplash.com/photo-1517841905240-472988babdf9?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=870&q=80" alt="imagen chica"/>
-                    </div>
+                      </div>  
+                    )}
+                     
                 </div>
             </div>
         </section>
