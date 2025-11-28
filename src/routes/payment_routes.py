@@ -26,11 +26,11 @@ historial_bp = Blueprint('historial', __name__)
 
 @plans_bp.route('/', methods=['GET'])
 def get_plans():
-    """Endpoint público: No requiere JWT"""
+    
     try:
         response = supabase.table('subscription_plans').select('*').eq('active', True).execute()
         plans = response.data or []
-        # Calcula el precio en BSD
+        
         for plan in plans:
             plan['price_bsd'] = payment_service.calculate_bsd_price(plan['price_usd'])
         return jsonify(plans), 200
@@ -95,6 +95,38 @@ def get_user_payments():
         return jsonify({"error": str(e)}), 500
 
 
+@user_payments_bp.route('/verify', methods=['POST'])
+@jwt_required()
+def verify_and_upgrade_role():
+ 
+    
+    try:
+        body = request.get_json() or {}
+        user_id = body.get('user_id') or get_jwt_identity()
+
+        if not user_id:
+            return jsonify({"error": "user_id required or present in JWT"}), 400
+
+      
+        resp = supabase.table('payments')\
+            .select('*')\
+            .eq('id_user', user_id)\
+            .eq('status', 'completed')\
+            .limit(1)\
+            .execute()
+
+        payments = getattr(resp, 'data', None) or []
+        if not payments:
+            return jsonify({"success": False, "message": "No completed payments found for user"}), 404
+
+        # Actualizar rol del usuario a 2
+        upd = supabase.table('User').update({'id_rol': 2}).eq('id_user', user_id).execute()
+        return jsonify({"success": True, "message": "User role updated to paid (id_rol=2)", "updated": getattr(upd, 'data', None)}), 200
+
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
 @historial_bp.route('/transactions', methods=['GET'])
 def transactions():
     limit = request.args.get('limit', type=int)
@@ -128,3 +160,4 @@ def send_alert():
         return jsonify({'error': 'user_id required'}), 400
     result = historial_service.send_expiration_alert(user_id)
     return jsonify(result), 200 if result.get('success') else 500
+

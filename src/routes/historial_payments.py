@@ -169,7 +169,7 @@ class PaymentService:
             user = user_response.data[0]
             expiration_data = self.check_subscription_expiration(user_id)
             
-            # Si tu check devuelve 'expired' use eso:
+            
             if expiration_data.get('expired') is True:
                 # decide si quieres enviar alerta solo si está por expirar o si está expirado
                 # si quieres enviar solo cuando esté por expirar:

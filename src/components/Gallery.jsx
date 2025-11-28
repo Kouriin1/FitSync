@@ -1,5 +1,5 @@
 import '../styles/Gallery.css'
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 
 export default function Gallery({ isAdmin = false }) {
 
@@ -52,6 +52,96 @@ export default function Gallery({ isAdmin = false }) {
   return () => controller.abort()
 }, [])
 
+// Crear imagen (POST)
+const fileInputRef = useRef(null);
+
+const addImage = async (event) => {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("titulo", file.name);
+
+  try {
+    const res = await fetch("/api/gallery", {
+      method: "POST",
+      body: formData, // 👈 aquí va FormData
+    });
+
+    if (!res.ok) throw new Error("Error al subir imagen");
+    const created = await res.json();
+    setImages((prev) => [...prev, created]);
+  } catch (err) {
+    console.error("Add image failed:", err);
+  }
+};
+
+// Abre el diálogo de selección de archivo y modifica segun su uso
+const openFileDialog = () => {
+  fileInputRef.current.click();
+};
+
+const [editImageId, setEditImageId] = useState(null);
+
+const handleFileDialog = (imageId = null) => {
+  setEditImageId(imageId); // si viene un id, es update; si es null, es add
+  fileInputRef.current.click();
+};
+
+const handleFileChange = async (event) => {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  if (editImageId) {
+    // actualizar imagen existente
+    await updateImage(editImageId, file);
+  } else {
+    // añadir nueva imagen
+    await addImage(file);
+  }
+
+  setEditImageId(null); // reset
+};
+
+
+// Actualizar imagen (PUT)
+const updateImage = async (imageId, file) => {
+  if (!file) return;
+
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("titulo", file.name);
+
+  try {
+    const res = await fetch(`/api/gallery/${imageId}`, {
+      method: "PUT",
+      body: formData, // 👈 enviamos el archivo
+    });
+
+    if (!res.ok) throw new Error("Error al actualizar imagen");
+    const updated = await res.json();
+
+    setImages((prev) =>
+      prev.map((img) => (img.id === imageId ? updated : img))
+    );
+  } catch (err) {
+    console.error("Update image failed:", err);
+  }
+};
+
+// Eliminar imagen (DELETE)
+const deleteImage = async (id) => {
+  try {
+    const res = await fetch(`/api/gallery/${id}`, { method: 'DELETE' });
+    if (!res.ok) throw new Error('Error al eliminar imagen');
+    await res.json();
+    setImages(prev => prev.filter(img => img.id !== id));
+  } catch (err) {
+    console.error('Delete image failed:', err);
+  }
+};
+
 
     const toggleZoom = (src) => {
         setZoomSrc(prev => (prev === src ? null : src));
@@ -70,21 +160,35 @@ export default function Gallery({ isAdmin = false }) {
                         <>
                         <div className="gallery-images">
                           {images.map((img) => (
-                            <button className='edit-image' key={img.id}>
-                            <img
-                              key={img.id}
-                              src={img.url} // ruta relativa a public/
-                              alt={img.alt || ''}
-                              className='gallery-image'
-                              onClick={() => toggleZoom(src)}
-                            />
-                            </button>
+                            <div className='gallery-image-container' key={img.id}>
+                              <img
+                                src={img.url} // ruta relativa a public/
+                                alt={img.alt || ''}
+                                className='gallery-image'
+                                onClick={() => toggleZoom(src)}
+                              />
+                              <div className='gallery-image-actions'>
+                                <button className="edit-image" onClick={() => handleFileDialog(img.id)} >
+                                  Cambiar
+                                </button>
+                                <button className="delete-image" onClick={() => deleteImage(img.id)} >
+                                  Eliminar
+                                </button>
+                              </div>
+                            </div>
                           ))}
-                            <button className='add-image'><i>+</i>Añadir imagen</button>
+                            <button className='add-image' onClick={openFileDialog}>
+                              <i>+</i>Añadir imagen
+                            </button>
+                            <input
+                                type="file"
+                                accept="image/*"
+                                ref={fileInputRef}
+                                style={{ display: "none" }}
+                                onChange={handleFileChange}
+                              />
                         </div>
-                        <div className='gallery-submit'>
-                          <button className='submit'>Confirmar</button> 
-                        </div>
+
                         </>
                     ) : (
                       <div className="gallery-images">
