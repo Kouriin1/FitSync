@@ -97,3 +97,6 @@
 .redirect-container a:hover{
     color: var(--color-especial);
 }
+.form-error{
+    color: var(--principal);
+}
