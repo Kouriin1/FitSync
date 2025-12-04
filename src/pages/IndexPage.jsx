@@ -2,8 +2,6 @@ import NavbarLoged from '../components/NavbarLoged.jsx';
 import Footer from '../components/Footer.jsx';
 import { MemberWelcome } from '../components/MemberWelcome.jsx';
 import { ClassSchedule } from '../components/ClassSchedule.jsx';
-import { MemberGoals } from '../components/MemberGoals.jsx';
-import Payment from '../components/Payment.jsx';
 import Gallery from '../components/Gallery.jsx';
 import { Trainers } from '../components/Trainers.jsx';
 import { Nutritionists } from '../components/Nutritionist.jsx';
@@ -19,20 +17,21 @@ export function IndexPage() {
 
     if (userId && token) {
       fetch(`/user/${userId}`, {
+        method: 'GET',
         headers: {
           Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
           'Accept': 'application/json'
         },
       })
         .then((res) => {
           if (!res.ok) throw new Error(`Error HTTP: ${res.status}`);
-          console("Datos del usuario:", res.json());
+          //console.log("Datos del usuario:", res.json());
           return res.json();
         })
-        .then((data) => {
-          
-          console.log("Datos del usuario:", data);
-          console.log(typeof data.id_rol, data.id_rol)
+        .then((data) => {      
+          //console.log("Datos del usuario:", data);
+          //console.log(typeof data.id_rol, data.id_rol)
           setIsAdmin(Number(data.id_rol) === 4);
         })
         .catch((err) => console.error("Error fetching user:", err));
